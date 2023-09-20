@@ -4,27 +4,25 @@ stages:
   
 build_image: #job name 
   stage: build
-  image: google/cloud-sdk:latest #i need docker in google cloud image inorder to run gc commands in the container (the client of docker)
+  image: google/cloud-sdk:latest #building google cloud image inorder to be able to run gc commands in the script part
   services: 
-    - "docker:24.0.5-dind" #the demon of docker 
+    - "docker:24.0.5-dind" #the demon of docker needs to be added in order to be able to run docker commands inside the google image
   variables:
     DOCKER_HOST: tcp://docker:2375 #allows the demon to function
     CI_DEBUG_TRACE: "true"
   before_script: #log into google cloud before proceeding to the script
     - gcloud auth activate-service-account $CLOUD_SERVICE_NAME --key-file $cape_technical_challenge_googlecloud_key --project $PROJECT_ID
   script: #like we do manually, we build an image to googlecloud registry 
-    - docker build -t gcr.io/$PROJECT_ID/json-project:latest .
-    - gcloud auth configure-docker
-    - docker push gcr.io/$PROJECT_ID/json-project:latest 
+    - docker build -t gcr.io/$PROJECT_ID/json-project:latest . #building the docker image(created by docker file) in gc container registery 
+    - gcloud auth configure-docker #authenticating Docker to access Google Container Registry (GCR)
+    - docker push gcr.io/$PROJECT_ID/json-project:latest #performing the push to gcloud container registery 
 
     
 delpoy_cloudrun:
   stage: deploy
-  image: google/cloud-sdk:alpine
+  image: google/cloud-sdk:alpine #adding the google image in order to use gc commands in the script 
   only:
   - main
   script:
-    - echo "i am in dEploy"
-    - gcloud auth activate-service-account $CLOUD_SERVICE_NAME --key-file $cape_technical_challenge_googlecloud_key --project $PROJECT_ID
-    - gcloud run deploy bycape-challenge-terraform --image=gcr.io/cape-technical-challenge/json-project:latest --region=us-central1 --port=3000 --min-instances=0 --cpu=1 --memory=2Gi --concurrency=5
-
+    - gcloud auth activate-service-account $CLOUD_SERVICE_NAME --key-file $cape_technical_challenge_googlecloud_key --project $PROJECT_ID #authenticating into gcloud using service account
+    - gcloud run deploy bycape-challenge-terraform --image=gcr.io/cape-technical-challenge/json-project:latest --region=us-central1 --port=3000 --min-instances=0 --cpu=1 --memory=2Gi --concurrency=5 #running deploy on the google run machine with some comf.
